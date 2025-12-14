@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Take Your Hairstyle</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <section class="hero">
+    <div style="position:absolute; top:20px; left:20px; font-weight:900; opacity:0.2; font-size:2rem; transform:rotate(-15deg);">KELOMPOK<br>-----5------</div>
+    
+    <h1>Take Your Hair<br><span style="font-size:0.5em; background:none; color:black; text-shadow:none;"></span></h1>
+    
+    <p>Face Shape Analysis</p>
+
+    <div class="actions">
+      <label class="btn primary">
+        Upload File
+        <input type="file" id="imageInput" accept="image/*" hidden />
+      </label>
+      <button class="btn outline" onclick="openCamera()">Start Camera</button>
+    </div>
+
+    <video id="camera" class="hidden" autoplay></video>
+    <canvas id="canvas" class="hidden"></canvas>
+    
+    <div id="preview"></div>
+
+    <button id="captureBtn" class="btn primary hidden" style="margin-top:20px" onclick="capturePhoto()">
+      Snap Target
+    </button>
+
+    <button id="analyzeBtn" class="btn primary hidden" style="margin-top:40px; font-size:2rem; background:white; color:red; transform:rotate(3deg);" onclick="analyze()">
+      Analysis!
+    </button>
+  </section>
+
+  <section id="resultSection" class="result-section hidden">
+    <div class="result-layout">
+      
+      <div id="analysis" class="analysis-card"></div>
+      
+      <div class="recommendation">
+        <h3>Steal The Look</h3>
+        <div id="hairGrid" class="hair-grid"></div>
+        
+        <div id="loadMoreContainer" class="load-more-container hidden">
+            <button onclick="loadMore()" class="btn load-more">Show More!</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
