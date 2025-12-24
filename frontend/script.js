@@ -435,65 +435,58 @@ const hairstyleImages = {
     "https://www.byrdie.com/thmb/HMF6A2cDD-cTQoqkT9Iw4KrMc1Q=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/hilary-38bd8d0555a64526a6c53385bda4ee74.png",
 };
 
-imageInput.addEventListener("change", () => {
-  stopCamera();
-  const file = imageInput.files[0];
-  if (!file) return;
-  imageBlob = file;
-  showPreview(URL.createObjectURL(file));
+// =====================
+// IMAGE UPLOAD
+// =====================
+imageInput.addEventListener("change", (e) => {
+  imageBlob = e.target.files[0];
+  const imgURL = URL.createObjectURL(imageBlob);
+
+  preview.innerHTML = `<img src="${imgURL}" />`;
   analyzeBtn.classList.remove("hidden");
 });
 
+// =====================
+// CAMERA
+// =====================
 function openCamera() {
   navigator.mediaDevices.getUserMedia({ video: true }).then((s) => {
     stream = s;
     video.srcObject = stream;
     video.classList.remove("hidden");
     captureBtn.classList.remove("hidden");
-    preview.innerHTML = "";
   });
 }
 
 function capturePhoto() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0);
+
   canvas.toBlob((blob) => {
     imageBlob = blob;
-    showPreview(URL.createObjectURL(blob));
+    const imgURL = URL.createObjectURL(blob);
+    preview.innerHTML = `<img src="${imgURL}" />`;
+
+    video.classList.add("hidden");
+    captureBtn.classList.add("hidden");
+    stream.getTracks().forEach((t) => t.stop());
+
     analyzeBtn.classList.remove("hidden");
   });
-  stopCamera();
 }
 
-function stopCamera() {
-  if (stream) {
-    stream.getTracks().forEach((t) => t.stop());
-    stream = null;
-  }
-  video.classList.add("hidden");
-  captureBtn.classList.add("hidden");
-}
-
-function showPreview(src) {
-  preview.innerHTML = `<img src="${src}" />`;
-}
-
-function smoothScrollToResult() {
-  const start = window.scrollY;
-  const end = resultSection.getBoundingClientRect().top + window.scrollY;
-  window.scrollTo({ top: end, behavior: "smooth" });
-}
-
-
+// =====================
+// ANALYZE FACE SHAPE
+// =====================
 async function analyze() {
-  if (!imageBlob) return;
-
-  analyzeBtn.innerText = "Analysing...";
-
   const formData = new FormData();
   formData.append("file", imageBlob);
+
+  analyzeBtn.innerText = "Analyzing...";
+  analyzeBtn.disabled = true;
 
   const res = await fetch("http://127.0.0.1:8000/predict", {
     method: "POST",
@@ -502,62 +495,214 @@ async function analyze() {
 
   const data = await res.json();
 
+  showAnalysis(data.face_shape, data.confidence);
   currentRecommendations = data.recommendations;
   itemsShown = 0;
-  hairGrid.innerHTML = "";
 
+  renderHairstyles();
   resultSection.classList.remove("hidden");
-  smoothScrollToResult();
-
-  document.getElementById("analysis").innerHTML = `
-    <div style="margin-bottom:20px; text-align:left;">
-      <div class="face-label">DIAGNOSIS</div>
-      <div class="face-value">${data.face_shape}</div>
-    </div>
-
-    <div style="text-align:left; font-family:'Anton'; font-size:1.2rem; color:var(--p5-gray);">CONFIDENCE LEVEL</div>
-    <div class="p5-progress-wrap">
-      <div class="p5-progress-fill" style="width:${data.confidence}%"></div>
-    </div>
-    <div style="text-align:right; font-size: 2.5rem; font-family:'Anton'; color:var(--p5-red);">${data.confidence}%</div>
-    
-    <p style="margin-top:20px; font-weight:600; font-style:italic; border-top:2px dashed black; padding-top:10px;">
-      "The shape has been revealed! We suggest these disguises to enhance your charm."
-    </p>
-  `;
 
   analyzeBtn.innerText = "Analysis!";
-  loadMore();
+  analyzeBtn.disabled = false;
 }
 
-function loadMore() {
-  const start = itemsShown;
-  const end = start + ITEMS_PER_PAGE;
-  const batch = currentRecommendations.slice(start, end);
+// =====================
+// SHOW ANALYSIS
+// =====================
+function showAnalysis(faceShape, confidence) {
+  document.getElementById("analysis").innerHTML = `
+    <div class="face-label">Diagnosis</div>
+    <div class="face-value">${faceShape}</div>
 
-  if (batch.length === 0) return;
+    <div class="p5-progress-wrap">
+      <div class="p5-progress-fill" style="width:${confidence}%"></div>
+    </div>
 
-  const fragment = document.createDocumentFragment();
+    <p><strong>${confidence}%</strong> confidence level</p>
+  `;
+}
 
-  batch.forEach((h) => {
+// =====================
+// RENDER HAIRSTYLES (PAGINATION)
+// =====================
+function renderHairstyles() {
+  const slice = currentRecommendations.slice(
+    itemsShown,
+    itemsShown + ITEMS_PER_PAGE
+  );
+
+  slice.forEach((name) => {
+    if (!hairstyleImages[name]) return;
+
     const div = document.createElement("div");
     div.className = "hair-item";
 
-    const imgSrc = hairstyleImages[h];
-
     div.innerHTML = `
-      <img src="${imgSrc}" loading="lazy" alt="${h}">
-      <div class="hair-name">${h}</div>
+      <img src="${hairstyleImages[name]}" />
+      <div class="hair-name">${name}</div>
     `;
-    fragment.appendChild(div);
+
+    // 🔥 CLICK = TRY ON
+    div.onclick = () => tryOnHair(name);
+
+    hairGrid.appendChild(div);
   });
 
-  hairGrid.appendChild(fragment);
-  itemsShown += batch.length;
+  itemsShown += ITEMS_PER_PAGE;
 
-  if (itemsShown >= currentRecommendations.length) {
-    loadMoreContainer.classList.add("hidden");
-  } else {
+  if (itemsShown < currentRecommendations.length) {
     loadMoreContainer.classList.remove("hidden");
+  } else {
+    loadMoreContainer.classList.add("hidden");
   }
+}
+
+function loadMore() {
+  renderHairstyles();
+}
+
+// =====================
+// TRY ON HAIRSTYLE
+// =====================
+async function tryOnHair(hairstyleName) {
+  if (!imageBlob) {
+    alert("Please upload or capture an image first!");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", imageBlob);
+  formData.append("hairstyle", hairstyleName);
+
+  // Show loading state
+  const tryOnResult = document.getElementById("tryOnResult");
+  if (!tryOnResult) {
+    // Create tryOnResult div if it doesn't exist
+    const resultDiv = document.createElement("div");
+    resultDiv.id = "tryOnResult";
+    resultDiv.style.marginTop = "20px";
+    resultDiv.style.padding = "20px";
+    resultDiv.style.border = "2px solid #d60914";
+    resultDiv.style.borderRadius = "10px";
+    resultDiv.style.backgroundColor = "#fff";
+    resultSection.appendChild(resultDiv);
+  }
+
+  const tryOnResultEl = document.getElementById("tryOnResult");
+  tryOnResultEl.innerHTML = `
+    <div style="text-align:center; padding:20px;">
+      <div style="font-size:20px; font-weight:bold; color:#d60914; margin-bottom:10px;">
+        🎨 Applying hairstyle...
+      </div>
+      <div style="font-size:16px; color:#666;">
+        ${hairstyleName}
+      </div>
+      <div style="margin-top:15px;">
+        <div style="width:50px; height:50px; border:5px solid #d60914; border-top-color:transparent; border-radius:50%; margin:0 auto; animation:spin 1s linear infinite;"></div>
+      </div>
+    </div>
+  `;
+
+  // Add spin animation if not already present
+  if (!document.getElementById("spin-style")) {
+    const style = document.createElement("style");
+    style.id = "spin-style";
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  try {
+    // Use simple overlay
+    const res = await fetch("http://127.0.0.1:8000/try-on", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server error: ${res.status} ${res.statusText}`);
+    }
+
+    const blob = await res.blob();
+    const imgURL = URL.createObjectURL(blob);
+
+    tryOnResultEl.innerHTML = `
+      <div style="text-align:center;">
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <h3 style="color:#d60914; margin-bottom:10px;">✨ Try-On Preview</h3>
+          <p style="color: #666; font-size: 0.9rem; margin: 0;">
+            Hairstyle: <strong>${hairstyleName}</strong>
+          </p>
+        </div>
+        <img src="${imgURL}" style="width:100%; max-width:600px; border:4px solid #d60914; border-radius:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+        
+        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="downloadImage('${imgURL}', '${hairstyleName}')" 
+                  style="padding:12px 24px; background:#d60914; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size: 1rem;">
+            📥 Download Result
+          </button>
+          <button onclick="tryAnotherStyle()" 
+                  style="padding:12px 24px; background:#fff; color:#d60914; border:2px solid #d60914; border-radius:5px; cursor:pointer; font-weight:bold; font-size: 1rem;">
+            🔄 Try Another Style
+          </button>
+        </div>
+
+        <div style="margin-top: 20px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; text-align: left;">
+          <strong style="color: #856404;">💡 Pro Tip:</strong>
+          <p style="color: #856404; margin: 5px 0 0 0; font-size: 0.85rem;">
+            Simpan hasil ini dan konsultasikan dengan hair stylist Anda untuk aplikasi yang sesungguhnya.
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Scroll to result
+    tryOnResultEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (error) {
+    console.error("Try-on error:", error);
+    tryOnResultEl.innerHTML = `
+      <div style="text-align:center; padding:30px; color:#d60914;">
+        <div style="font-size:48px; margin-bottom:15px;">❌</div>
+        <h3 style="margin-bottom:15px;">Try-on Failed</h3>
+        <p style="color:#666; margin-bottom:20px; max-width: 400px; margin-left: auto; margin-right: auto;">
+          ${error.message || "An error occurred while applying the hairstyle. Please try again."}
+        </p>
+        <button onclick="location.reload()" 
+                style="padding:12px 24px; background:#d60914; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
+          🔄 Refresh Page
+        </button>
+      </div>
+    `;
+  }
+}
+
+// Helper function to try another style (scroll back to grid)
+function tryAnotherStyle() {
+  const hairGrid = document.getElementById("hairGrid");
+  hairGrid.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Helper function to download image
+function downloadImage(url, hairstyleName) {
+  const a = document.createElement("a");
+  a.href = url;
+  const timestamp = new Date().toISOString().slice(0,10);
+  a.download = `hairstyle-preview-${hairstyleName.replace(/\s+/g, "-").toLowerCase()}-${timestamp}.jpg`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  // Show success message
+  const downloadBtn = event.target;
+  const originalText = downloadBtn.innerHTML;
+  downloadBtn.innerHTML = '✅ Downloaded!';
+  downloadBtn.style.background = '#28a745';
+  setTimeout(() => {
+    downloadBtn.innerHTML = originalText;
+    downloadBtn.style.background = '#d60914';
+  }, 2000);
 }

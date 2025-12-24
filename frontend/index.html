@@ -12,7 +12,16 @@
     
     <h1>Take Your Hair<br><span style="font-size:0.5em; background:none; color:black; text-shadow:none;"></span></h1>
     
-    <p>Face Shape Analysis</p>
+    <p>Face Shape Analysis & Hairstyle Recommendations</p>
+
+    <!-- Disclaimer -->
+    <div style="max-width: 600px; margin: 20px auto; padding: 15px; background: rgba(255, 255, 255, 0.95); border-left: 4px solid #d60914; border-radius: 8px; text-align: left; font-size: 0.9rem;">
+      <strong style="color: #d60914;">📌 Preview Mode</strong><br>
+      <span style="color: #666;">
+        Hasil try-on adalah <strong>visualization preview</strong> untuk membantu Anda membayangkan hairstyle. 
+        Gunakan sebagai <strong>referensi konsultasi</strong> dengan hair stylist.
+      </span>
+    </div>
 
     <div class="actions">
       <label class="btn primary">
@@ -39,10 +48,14 @@
   <section id="resultSection" class="result-section hidden">
     <div class="result-layout">
       
-      <div id="analysis" class="analysis-card"></div>
+      <div id="analysis" class="analysis-card"><h3 style="margin-bottom:15px">Try On Result</h3>
+  <div id="tryOnResult"></div></div>
       
       <div class="recommendation">
         <h3>Steal The Look</h3>
+        <p style="color: #666; margin-bottom: 15px; font-size: 0.9rem;">
+          💡 Klik gambar hairstyle untuk try-on preview
+        </p>
         <div id="hairGrid" class="hair-grid"></div>
         
         <div id="loadMoreContainer" class="load-more-container hidden">

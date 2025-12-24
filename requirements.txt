@@ -4,3 +4,7 @@ torch
 torchvision
 pillow
 python-multipart
+opencv-python
+mediapipe
+gdown
+tqdm
