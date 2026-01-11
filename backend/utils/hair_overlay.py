@@ -1,18 +1,21 @@
 import cv2
 import numpy as np
 
+def detect_hairline(alpha_mask):
+    if alpha_mask is None:
+        return 0
+    
+    coords = cv2.findNonZero(alpha_mask)
+    if coords is None:
+        return 0
+    
+    # Get the minimum Y coordinate (topmost pixel)
+    hairline_y = coords[:, 0, 1].min()
+    
+    return int(hairline_y)
+
+
 def overlay_hair(face_img, hair_img, landmarks):
-    """
-    Overlay hair image onto face image using facial landmarks with natural blending.
-    
-    Args:
-        face_img: BGR face image
-        hair_img: BGRA hair image with alpha channel
-        landmarks: List of facial landmarks (x, y) tuples
-    
-    Returns:
-        Face image with hair overlay
-    """
     # Validate inputs
     print(f"[OVERLAY] Starting overlay_hair")
     print(f"[OVERLAY] face_img: {face_img.shape if face_img is not None else 'None'}")
@@ -62,10 +65,25 @@ def overlay_hair(face_img, hair_img, landmarks):
         # Resize hair with high quality interpolation
         hair = cv2.resize(hair_img, (hair_width, hair_height), interpolation=cv2.INTER_LANCZOS4)
         
-        # Calculate position - center and optimal height
+        # Extract alpha channel from resized hair
+        if hair.shape[2] == 4:
+            hair_alpha = hair[:, :, 3]
+        else:
+            # If no alpha, create from luminance
+            gray = cv2.cvtColor(hair[:, :, :3], cv2.COLOR_BGR2GRAY)
+            _, hair_alpha = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+        
+        # SMART POSITIONING: Detect hairline and align with forehead
+        hairline_y = detect_hairline(hair_alpha)
+        print(f"[OVERLAY] Detected hairline at Y={hairline_y} in resized hair image")
+        
+        # Calculate position - center horizontally
         x1 = int(left[0] - (hair_width - face_width) / 2)
-        # Optimal positioning - covers hair area without covering face
-        y1 = int(forehead[1] - hair_height * 0.85)  # Optimized value
+        
+        # Position vertically: Align the detected hairline with forehead landmark
+        # Use face height to calculate proper offset - hair should start above forehead
+        offset_above_forehead = int(face_height * 0.35)  # 35% of face height above forehead
+        y1 = int(forehead[1] - hairline_y - offset_above_forehead)
         
         x2 = x1 + hair_width
         y2 = y1 + hair_height
